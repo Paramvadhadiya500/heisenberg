@@ -43,24 +43,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const login = async (email: string, password: string): Promise<boolean> => {
-    try {
-      const response = await axios.post('http://localhost:3001/api/auth/login', {
-        email,
-        password
-      });
+    // Mock authentication - no backend required
+    const demoUsers = [
+      { id: 1, name: 'John Doe', email: 'john@example.com', role: 'user' as const, credits: 150 },
+      { id: 2, name: 'Jane Smith', email: 'jane@example.com', role: 'user' as const, credits: 200 },
+      { id: 3, name: 'Admin User', email: 'admin@example.com', role: 'admin' as const, credits: 500 },
+    ];
 
-      if (response.data.success) {
-        const { user: userData, token } = response.data;
-        setUser(userData);
-        localStorage.setItem('user', JSON.stringify(userData));
-        localStorage.setItem('token', token);
-        return true;
-      }
-      return false;
-    } catch (error) {
-      console.error('Login error:', error);
-      return false;
+    // Simulate API delay
+    await new Promise(resolve => setTimeout(resolve, 500));
+
+    const user = demoUsers.find(u => u.email === email);
+    if (user && (password === 'demo' || password === 'password')) {
+      setUser(user);
+      localStorage.setItem('user', JSON.stringify(user));
+      localStorage.setItem('token', 'mock-token-' + user.id);
+      return true;
     }
+    
+    return false;
   };
 
   const logout = () => {
