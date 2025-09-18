@@ -106,7 +106,7 @@ const UserDashboard = () => {
                 variant="outline"
                 size="sm"
                 onClick={() => setShowVideo(true)}
-                className="text-white border-white hover:bg-white hover:text-eco-green"
+                className="bg-white/10 text-white border-white/30 hover:bg-white hover:text-eco-green"
               >
                 <Video className="h-4 w-4 mr-2" />
                 Watch Video
