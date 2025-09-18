@@ -36,7 +36,7 @@ const Login = () => {
       });
       navigate('/');
     } else {
-      setError('Login failed. For demo accounts: First Sign Up with the same email and password "demo123", then verify your email (or disable email confirmation in Supabase settings).');
+      setError('Please check your email and password.');
     }
     
     setIsLoading(false);
@@ -55,16 +55,6 @@ const Login = () => {
     }
     
     setIsLoading(false);
-  };
-
-  const demoAccounts = {
-    users: [
-      { email: 'john@example.com', role: 'User', name: 'John Doe' },
-      { email: 'jane@example.com', role: 'User', name: 'Jane Smith' },
-    ],
-    admin: [
-      { email: 'admin@example.com', role: 'Admin', name: 'Admin User' },
-    ]
   };
 
   return (
@@ -231,76 +221,6 @@ const Login = () => {
             </Tabs>
           </CardContent>
         </Card>
-
-        {/* Demo Accounts */}
-        <div className="space-y-4">
-          {/* User Demo Accounts */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-sm flex items-center gap-2">
-                <Leaf className="h-4 w-4 text-eco-green" />
-                User Demo Accounts
-              </CardTitle>
-              <CardDescription className="text-xs">
-                For regular users - Click to auto-fill credentials
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              {demoAccounts.users.map((account) => (
-                <Button
-                  key={account.email}
-                  variant="outline"
-                  size="sm"
-                  className="w-full justify-start"
-                  onClick={() => {
-                    setLoginData({ email: account.email, password: 'demo123' });
-                    setSelectedRole(account.role.toLowerCase() as 'user' | 'admin');
-                  }}
-                >
-                  <div className="flex items-center gap-2">
-                    <Leaf className="h-4 w-4 text-eco-green" />
-                    <span className="text-xs">
-                      {account.name} ({account.role})
-                    </span>
-                  </div>
-                </Button>
-              ))}
-            </CardContent>
-          </Card>
-
-          {/* Admin Demo Accounts */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-sm flex items-center gap-2">
-                <Globe className="h-4 w-4 text-eco-warning" />
-                Admin Demo Account
-              </CardTitle>
-              <CardDescription className="text-xs">
-                For administrators - Full system access
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              {demoAccounts.admin.map((account) => (
-                <Button
-                  key={account.email}
-                  variant="outline"
-                  size="sm"
-                  className="w-full justify-start"
-                  onClick={() => {
-                    setLoginData({ email: account.email, password: 'demo123' });
-                  }}
-                >
-                  <div className="flex items-center gap-2">
-                    <Globe className="h-4 w-4 text-eco-warning" />
-                    <span className="text-xs">
-                      {account.name} ({account.role})
-                    </span>
-                  </div>
-                </Button>
-              ))}
-            </CardContent>
-          </Card>
-        </div>
 
         {/* Features */}
         <div className="grid grid-cols-3 gap-4 text-center">

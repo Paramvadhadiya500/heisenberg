@@ -57,8 +57,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
         
         if (!profile && sbUser.email) {
-          // Use selectedRole if provided, otherwise default logic
-          const roleToUse = selectedRole || (sbUser.email === 'admin@example.com' ? 'admin' : 'user');
+          // Use selectedRole if provided, otherwise default to 'user'
+          const roleToUse = selectedRole || 'user';
           
           const { data: newProfile, error: insertError } = await supabase
             .from('profiles')
@@ -86,8 +86,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             credits: newProfile.credits
           });
         } else if (profile) {
-          // Update role if selectedRole is provided and user has admin email
-          if (selectedRole && sbUser.email === 'admin@example.com') {
+          // Update role if selectedRole is provided
+          if (selectedRole && selectedRole !== profile.role) {
             const { data: updatedProfile, error: updateError } = await supabase
               .from('profiles')
               .update({ role: selectedRole })
