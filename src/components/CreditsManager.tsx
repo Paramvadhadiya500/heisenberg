@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { 
   Gift, 
   Plus, 
@@ -17,18 +18,18 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 
 interface User {
-  id: number;
+  id: string;
   name: string;
   email: string;
   credits: number;
 }
 
 interface RedeemCode {
-  id: number;
+  id: string;
   code: string;
-  userId: number;
-  createdAt: string;
+  user_id: string;
   redeemed: boolean;
+  created_at: string;
 }
 
 const CreditsManager = () => {
@@ -37,7 +38,7 @@ const CreditsManager = () => {
   const [redeemCodes, setRedeemCodes] = useState<RedeemCode[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
-  const [creditsToAdd, setCreditsToAdd] = useState('');
+  const [creditsToAdd, setCreditsToAdd] = useState<number>(0);
   const [isAdding, setIsAdding] = useState(false);
 
   useEffect(() => {
@@ -46,13 +47,21 @@ const CreditsManager = () => {
 
   const fetchData = async () => {
     try {
-      const [usersRes, codesRes] = await Promise.all([
-        axios.get('http://localhost:3001/api/users'),
-        axios.get('http://localhost:3001/api/redeem-codes')
+      const [{ data: profiles, error: profilesError }, { data: codes, error: codesError }] = await Promise.all([
+        supabase.from('profiles').select('*').order('name'),
+        supabase.from('redeem_codes').select('*').order('created_at', { ascending: false }).limit(10)
       ]);
       
-      setUsers(usersRes.data);
-      setRedeemCodes(codesRes.data);
+      if (profilesError) throw profilesError;
+      if (codesError) throw codesError;
+      
+      setUsers(profiles?.map(p => ({
+        id: p.user_id,
+        name: p.name,
+        email: p.email,
+        credits: p.credits
+      })) || []);
+      setRedeemCodes(codes || []);
     } catch (error) {
       toast({
         title: "Error loading data",
@@ -64,15 +73,11 @@ const CreditsManager = () => {
     }
   };
 
-  const handleAddCredits = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedUser || !creditsToAdd) return;
-
-    const credits = parseInt(creditsToAdd);
-    if (credits <= 0) {
+  const handleAddCredits = async () => {
+    if (!selectedUser || creditsToAdd <= 0) {
       toast({
-        title: "Invalid amount",
-        description: "Please enter a positive number of credits.",
+        title: "Invalid input",
+        description: "Please select a user and enter a valid amount of credits.",
         variant: "destructive"
       });
       return;
@@ -81,25 +86,28 @@ const CreditsManager = () => {
     setIsAdding(true);
     
     try {
-      const response = await axios.post(`http://localhost:3001/api/users/${selectedUser.id}/credits`, {
-        credits
-      });
+      const newCreditsTotal = selectedUser.credits + creditsToAdd;
+      
+      const { error } = await supabase
+        .from('profiles')
+        .update({ credits: newCreditsTotal })
+        .eq('user_id', selectedUser.id);
 
-      if (response.data.success) {
-        setUsers(users.map(u => 
-          u.id === selectedUser.id 
-            ? { ...u, credits: u.credits + credits }
-            : u
-        ));
-        
-        toast({
-          title: "Credits added successfully!",
-          description: `Added ${credits} credits to ${selectedUser.name}'s account.`,
-        });
-        
-        setCreditsToAdd('');
-        setSelectedUser(null);
-      }
+      if (error) throw error;
+
+      setUsers(users.map(u => 
+        u.id === selectedUser.id 
+          ? { ...u, credits: newCreditsTotal }
+          : u
+      ));
+      
+      toast({
+        title: "Credits added successfully!",
+        description: `Added ${creditsToAdd} credits to ${selectedUser.name}.`,
+      });
+      
+      setSelectedUser(null);
+      setCreditsToAdd(0);
     } catch (error) {
       toast({
         title: "Error adding credits",
@@ -132,8 +140,8 @@ const CreditsManager = () => {
     return (
       <div className="space-y-6">
         <div>
-          <h2 className="text-3xl font-bold text-eco-dark">Credits Management</h2>
-          <p className="text-muted-foreground mt-2">Loading user credits...</p>
+          <h2 className="text-3xl font-bold text-eco-dark">Manage Credits</h2>
+          <p className="text-muted-foreground mt-2">Loading credits data...</p>
         </div>
         <div className="grid gap-4">
           {[1, 2, 3].map(i => (
@@ -149,13 +157,17 @@ const CreditsManager = () => {
     );
   }
 
+  const totalCredits = users.reduce((sum, user) => sum + user.credits, 0);
+  const eligibleUsers = users.filter(user => user.credits >= 100).length;
+  const averageCredits = users.length > 0 ? Math.round(totalCredits / users.length) : 0;
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-3xl font-bold text-eco-dark">Credits Management</h2>
+          <h2 className="text-3xl font-bold text-eco-dark">Manage Credits</h2>
           <p className="text-muted-foreground mt-2">
-            Manage user credits and track reward redemptions
+            Manage user credits and view reward redemptions
           </p>
         </div>
         
@@ -170,7 +182,7 @@ const CreditsManager = () => {
             <DialogHeader>
               <DialogTitle>Add Credits to User</DialogTitle>
             </DialogHeader>
-            <AddCreditsForm
+            <AddCreditsForm 
               users={users}
               selectedUser={selectedUser}
               setSelectedUser={setSelectedUser}
@@ -183,64 +195,71 @@ const CreditsManager = () => {
         </Dialog>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      {/* Statistics Cards */}
+      <div className="grid gap-4 md:grid-cols-4">
         <Card className="eco-shadow">
           <CardContent className="p-4">
-            <div className="text-2xl font-bold text-eco-green">
-              {users.reduce((total, user) => total + user.credits, 0)}
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Total Credits</p>
+                <p className="text-2xl font-bold text-eco-green">{totalCredits}</p>
+              </div>
+              <Gift className="h-8 w-8 text-eco-green" />
             </div>
-            <p className="text-sm text-muted-foreground">Total Credits</p>
           </CardContent>
         </Card>
-        
+
         <Card className="eco-shadow">
           <CardContent className="p-4">
-            <div className="text-2xl font-bold text-eco-accent">
-              {users.filter(u => u.credits >= 100).length}
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Eligible for Rewards</p>
+                <p className="text-2xl font-bold text-eco-blue">{eligibleUsers}</p>
+              </div>
+              <Star className="h-8 w-8 text-eco-blue" />
             </div>
-            <p className="text-sm text-muted-foreground">Eligible for Rewards</p>
           </CardContent>
         </Card>
-        
+
         <Card className="eco-shadow">
           <CardContent className="p-4">
-            <div className="text-2xl font-bold text-eco-warning">
-              {redeemCodes.length}
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Generated Codes</p>
+                <p className="text-2xl font-bold text-eco-warning">{redeemCodes.length}</p>
+              </div>
+              <Ticket className="h-8 w-8 text-eco-warning" />
             </div>
-            <p className="text-sm text-muted-foreground">Codes Generated</p>
           </CardContent>
         </Card>
-        
+
         <Card className="eco-shadow">
           <CardContent className="p-4">
-            <div className="text-2xl font-bold">
-              {Math.round(users.reduce((total, user) => total + user.credits, 0) / users.length) || 0}
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Average Credits</p>
+                <p className="text-2xl font-bold text-eco-dark">{averageCredits}</p>
+              </div>
+              <User className="h-8 w-8 text-eco-dark" />
             </div>
-            <p className="text-sm text-muted-foreground">Avg Credits/User</p>
           </CardContent>
         </Card>
       </div>
 
       {/* Users List */}
-      <div className="grid gap-4 lg:grid-cols-2">
-        <Card className="eco-shadow">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <User className="h-5 w-5 text-eco-green" />
-              User Credits
-            </CardTitle>
-            <CardDescription>
-              Current credit balance for all users
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
+      <Card className="eco-shadow">
+        <CardHeader>
+          <CardTitle>User Credits</CardTitle>
+          <CardDescription>View and manage user credit balances</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
             {users.map((user) => {
               const level = getUserLevel(user.credits);
               return (
-                <div key={user.id} className="flex items-center justify-between p-3 border rounded-lg">
+                <div key={user.id} className="flex items-center justify-between p-4 rounded-lg border hover:bg-eco-light">
                   <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-full bg-eco-light">
+                    <div className="p-2 rounded-full bg-eco-green/10">
                       <User className="h-4 w-4 text-eco-green" />
                     </div>
                     <div>
@@ -249,132 +268,139 @@ const CreditsManager = () => {
                     </div>
                   </div>
                   
-                  <div className="text-right">
-                    <div className="flex items-center gap-2 mb-1">
-                      <Star className="h-4 w-4 text-eco-green" />
-                      <span className="font-bold text-eco-green">{user.credits}</span>
-                    </div>
+                  <div className="flex items-center gap-4">
                     <Badge variant="outline" className={level.color}>
                       {level.name}
                     </Badge>
+                    <div className="text-right">
+                      <p className="text-lg font-bold text-eco-green">{user.credits}</p>
+                      <p className="text-xs text-muted-foreground">credits</p>
+                    </div>
                   </div>
                 </div>
               );
             })}
-          </CardContent>
-        </Card>
+          </div>
+        </CardContent>
+      </Card>
 
-        {/* Redeem Codes */}
-        <Card className="eco-shadow">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Ticket className="h-5 w-5 text-eco-warning" />
-              Recent Redemptions
-            </CardTitle>
-            <CardDescription>
-              Latest reward codes generated by users
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {redeemCodes.length === 0 ? (
-              <div className="text-center py-8">
-                <Ticket className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
-                <p className="text-sm text-muted-foreground">
-                  No redemption codes generated yet
-                </p>
-              </div>
-            ) : (
-              redeemCodes.slice(0, 5).map((code) => {
-                const user = users.find(u => u.id === code.userId);
-                return (
-                  <div key={code.id} className="flex items-center justify-between p-3 border rounded-lg">
-                    <div>
-                      <p className="font-medium font-mono">{code.code}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {user?.name || `User ${code.userId}`}
-                      </p>
+      {/* Recent Redeem Codes */}
+      <Card className="eco-shadow">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Ticket className="h-5 w-5 text-eco-green" />
+            Recent Redeem Codes
+          </CardTitle>
+          <CardDescription>Latest reward code redemptions</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-3">
+            {redeemCodes.slice(0, 5).map((code) => {
+              const user = users.find(u => u.id === code.user_id);
+              return (
+                <div key={code.id} className="flex items-center justify-between p-3 rounded-lg border">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-full bg-eco-accent/10">
+                      <Ticket className="h-4 w-4 text-eco-accent" />
                     </div>
-                    
-                    <div className="text-right">
+                    <div>
+                      <p className="font-mono font-medium">{code.code}</p>
                       <p className="text-sm text-muted-foreground">
-                        {formatDate(code.createdAt)}
+                        {user ? user.name : 'Unknown User'}
                       </p>
-                      <Badge variant={code.redeemed ? "default" : "secondary"}>
-                        {code.redeemed ? "Used" : "Active"}
-                      </Badge>
                     </div>
                   </div>
-                );
-              })
-            )}
-            
-            {redeemCodes.length > 5 && (
-              <Button variant="outline" className="w-full">
+                  
+                  <div className="text-right">
+                    <Badge variant={code.redeemed ? "default" : "secondary"}>
+                      {code.redeemed ? "Redeemed" : "Active"}
+                    </Badge>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {formatDate(code.created_at)}
+                    </p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          
+          {redeemCodes.length > 5 && (
+            <div className="pt-4 border-t">
+              <Button variant="outline" size="sm" className="w-full">
                 <History className="h-4 w-4 mr-2" />
-                View All Redemptions
+                View All Redemptions ({redeemCodes.length})
               </Button>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 };
 
-// Add Credits Form Component
-const AddCreditsForm: React.FC<{
+interface AddCreditsFormProps {
   users: User[];
   selectedUser: User | null;
   setSelectedUser: (user: User | null) => void;
-  creditsToAdd: string;
-  setCreditsToAdd: (credits: string) => void;
-  onSubmit: (e: React.FormEvent) => void;
+  creditsToAdd: number;
+  setCreditsToAdd: (credits: number) => void;
+  onSubmit: () => void;
   isLoading: boolean;
-}> = ({ users, selectedUser, setSelectedUser, creditsToAdd, setCreditsToAdd, onSubmit, isLoading }) => {
-  
+}
+
+const AddCreditsForm: React.FC<AddCreditsFormProps> = ({
+  users,
+  selectedUser,
+  setSelectedUser,
+  creditsToAdd,
+  setCreditsToAdd,
+  onSubmit,
+  isLoading
+}) => {
   return (
-    <form onSubmit={onSubmit} className="space-y-4">
+    <div className="space-y-4">
       <div className="space-y-2">
         <Label>Select User</Label>
-        <div className="space-y-2 max-h-48 overflow-y-auto">
-          {users.map((user) => (
-            <Button
-              key={user.id}
-              type="button"
-              variant={selectedUser?.id === user.id ? "default" : "outline"}
-              className="w-full justify-start"
-              onClick={() => setSelectedUser(user)}
-            >
-              <User className="h-4 w-4 mr-2" />
-              {user.name} ({user.credits} credits)
-            </Button>
-          ))}
-        </div>
+        <Select
+          value={selectedUser?.id || ''}
+          onValueChange={(value) => {
+            const user = users.find(u => u.id === value);
+            setSelectedUser(user || null);
+          }}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="Choose a user..." />
+          </SelectTrigger>
+          <SelectContent>
+            {users.map((user) => (
+              <SelectItem key={user.id} value={user.id}>
+                {user.name} - {user.credits} credits
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
-
-      {selectedUser && (
-        <div className="space-y-2">
-          <Label htmlFor="credits">Credits to Add</Label>
-          <Input
-            id="credits"
-            type="number"
-            min="1"
-            value={creditsToAdd}
-            onChange={(e) => setCreditsToAdd(e.target.value)}
-            placeholder="Enter number of credits"
-            required
-          />
-        </div>
-      )}
-
+      
+      <div className="space-y-2">
+        <Label>Credits to Add</Label>
+        <Input
+          type="number"
+          min="1"
+          max="1000"
+          value={creditsToAdd || ''}
+          onChange={(e) => setCreditsToAdd(parseInt(e.target.value) || 0)}
+          placeholder="Enter amount..."
+        />
+      </div>
+      
       <Button 
-        type="submit" 
-        className="w-full eco-gradient"
-        disabled={!selectedUser || !creditsToAdd || isLoading}
+        onClick={onSubmit} 
+        disabled={!selectedUser || creditsToAdd <= 0 || isLoading}
+        className="w-full"
       >
-        {isLoading ? 'Adding Credits...' : 'Add Credits'}
+        {isLoading ? 'Adding...' : `Add ${creditsToAdd} Credits`}
       </Button>
-    </form>
+    </div>
   );
 };
 
