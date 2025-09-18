@@ -115,9 +115,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
       
       if (error) {
+        let errorMessage = error.message;
+        
+        // Provide more user-friendly error messages
+        if (error.message.includes('Email not confirmed')) {
+          errorMessage = "Please check your email and click the confirmation link before signing in.";
+        } else if (error.message.includes('Invalid login credentials')) {
+          errorMessage = "Invalid email or password. Please check your credentials.";
+        }
+        
         toast({
           title: "Login failed",
-          description: error.message,
+          description: errorMessage,
           variant: "destructive"
         });
         return false;
@@ -126,6 +135,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return true;
     } catch (error) {
       console.error('Login error:', error);
+      toast({
+        title: "Login failed",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive"
+      });
       return false;
     }
   };
