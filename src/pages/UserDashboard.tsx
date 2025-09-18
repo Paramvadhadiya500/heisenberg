@@ -69,7 +69,7 @@ const UserDashboard = () => {
       case 'credits':
         return <CreditsSection />;
       default:
-        return <DashboardOverview />;
+        return <DashboardOverview setActiveTab={setActiveTab} />;
     }
   };
 
@@ -164,7 +164,7 @@ const UserDashboard = () => {
 };
 
 // Dashboard Overview Component
-const DashboardOverview = () => {
+const DashboardOverview = ({ setActiveTab }: { setActiveTab: (tab: string) => void }) => {
   const { user } = useAuth();
   
   return (
@@ -234,7 +234,10 @@ const DashboardOverview = () => {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Card className="border-2 border-dashed border-eco-green hover:bg-eco-light eco-transition cursor-pointer">
+            <Card 
+              className="border-2 border-dashed border-eco-green hover:bg-eco-light eco-transition cursor-pointer"
+              onClick={() => setActiveTab('complaint')}
+            >
               <CardContent className="p-6 text-center">
                 <Camera className="h-12 w-12 text-eco-green mx-auto mb-4" />
                 <h3 className="font-semibold mb-2">Report Waste Issue</h3>
@@ -244,7 +247,10 @@ const DashboardOverview = () => {
               </CardContent>
             </Card>
 
-            <Card className="border-2 border-dashed border-eco-accent hover:bg-eco-light eco-transition cursor-pointer">
+            <Card 
+              className="border-2 border-dashed border-eco-accent hover:bg-eco-light eco-transition cursor-pointer"
+              onClick={() => setActiveTab('workers')}
+            >
               <CardContent className="p-6 text-center">
                 <Users className="h-12 w-12 text-eco-accent mx-auto mb-4" />
                 <h3 className="font-semibold mb-2">Find Workers</h3>
