@@ -10,10 +10,10 @@ import {
   Target
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import axios from 'axios';
+import { supabase } from '@/integrations/supabase/client';
 
 interface User {
-  id: number;
+  id: string;
   name: string;
   email: string;
   credits: number;
@@ -31,14 +31,32 @@ const GreenChampion = () => {
 
   const fetchData = async () => {
     try {
-      const [championRes, usersRes] = await Promise.all([
-        axios.get('http://localhost:3001/api/green-champion'),
-        axios.get('http://localhost:3001/api/users')
-      ]);
+      const { data: users, error } = await supabase
+        .from('profiles')
+        .select('id, user_id, name, email, credits')
+        .order('credits', { ascending: false });
       
-      setChampion(championRes.data);
-      setAllUsers(usersRes.data.sort((a: User, b: User) => b.credits - a.credits));
+      if (error) {
+        throw error;
+      }
+      
+      if (users && users.length > 0) {
+        // Convert to expected format
+        const formattedUsers: User[] = users.map(user => ({
+          id: user.user_id,
+          name: user.name,
+          email: user.email,
+          credits: user.credits || 0
+        }));
+        
+        setChampion(formattedUsers[0]); // User with highest credits
+        setAllUsers(formattedUsers);
+      } else {
+        setChampion(null);
+        setAllUsers([]);
+      }
     } catch (error) {
+      console.error('Error fetching champion data:', error);
       toast({
         title: "Error loading champion data",
         description: "Please try again later.",
