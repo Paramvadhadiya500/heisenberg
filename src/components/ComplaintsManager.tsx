@@ -15,7 +15,7 @@ import {
   AlertCircle
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import axios from 'axios';
+import { supabase } from '@/integrations/supabase/client';
 
 interface Complaint {
   id: number;

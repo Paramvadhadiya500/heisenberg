@@ -15,28 +15,25 @@ import {
   Eye
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import axios from 'axios';
+import { supabase } from '@/integrations/supabase/client';
 import ReportForm from './ReportForm';
 
 interface Complaint {
-  id: number;
+  id: string;
   name: string;
   location: string;
   description: string;
-  photo?: string;
-  status: 'pending' | 'assigned' | 'completed' | 'cancelled';
-  assignedWorker?: {
-    id: number;
-    name: string;
-    phone: string;
-    area: string;
-  };
-  createdAt: string;
-  updatedAt: string;
+  image_url?: string;
+  status: 'pending' | 'assigned' | 'completed';
+  assigned_worker_id?: string;
+  assigned_worker_name?: string;
+  assigned_worker_phone?: string;
+  created_at: string;
+  updated_at: string;
 }
 
 const MyComplaints = () => {
-  const { user } = useAuth();
+  const { user, supabaseUser } = useAuth();
   const { toast } = useToast();
   const [complaints, setComplaints] = useState<Complaint[]>([]);
   const [loading, setLoading] = useState(true);
@@ -44,14 +41,20 @@ const MyComplaints = () => {
 
   useEffect(() => {
     fetchComplaints();
-  }, [user]);
+  }, [supabaseUser]);
 
   const fetchComplaints = async () => {
-    if (!user) return;
+    if (!supabaseUser) return;
     
     try {
-      const response = await axios.get(`http://localhost:3001/api/complaints?userId=${user.id}&role=${user.role}`);
-      setComplaints(response.data);
+      const { data, error } = await supabase
+        .from('complaints')
+        .select('*')
+        .eq('user_id', supabaseUser.id)
+        .order('created_at', { ascending: false });
+      
+      if (error) throw error;
+      setComplaints(data || []);
     } catch (error) {
       toast({
         title: "Error loading complaints",
@@ -150,7 +153,7 @@ const MyComplaints = () => {
                       </span>
                       <span className="flex items-center gap-1">
                         <Clock className="h-4 w-4" />
-                        {formatDate(complaint.createdAt)}
+                        {formatDate(complaint.created_at)}
                       </span>
                     </CardDescription>
                   </div>
@@ -164,19 +167,19 @@ const MyComplaints = () => {
                   {complaint.description.length > 150 && '...'}
                 </p>
 
-                {complaint.assignedWorker && (
+                {complaint.assigned_worker_name && (
                   <div className="bg-eco-light p-3 rounded-lg mb-4">
                     <h4 className="font-medium text-eco-dark mb-2">Assigned Worker:</h4>
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="font-medium">{complaint.assignedWorker.name}</p>
+                        <p className="font-medium">{complaint.assigned_worker_name}</p>
                         <p className="text-sm text-muted-foreground">
-                          {complaint.assignedWorker.area}
+                          Area: {complaint.assigned_worker_phone}
                         </p>
                       </div>
                       <div className="flex items-center gap-2">
                         <Phone className="h-4 w-4 text-eco-green" />
-                        <span className="text-sm">{complaint.assignedWorker.phone}</span>
+                        <span className="text-sm">{complaint.assigned_worker_phone}</span>
                       </div>
                     </div>
                   </div>
@@ -200,11 +203,11 @@ const MyComplaints = () => {
                           <p className="text-sm text-muted-foreground">{complaint.description}</p>
                         </div>
                         
-                        {complaint.photo && (
+                        {complaint.image_url && (
                           <div>
                             <h4 className="font-medium mb-2">Photo:</h4>
                             <img
-                              src={complaint.photo}
+                              src={complaint.image_url}
                               alt="Complaint"
                               className="max-w-full h-64 object-cover rounded-lg border"
                             />
@@ -222,7 +225,7 @@ const MyComplaints = () => {
                             <strong>Status:</strong> {getStatusBadge(complaint.status)}
                           </div>
                           <div>
-                            <strong>Created:</strong> {formatDate(complaint.createdAt)}
+                            <strong>Created:</strong> {formatDate(complaint.created_at)}
                           </div>
                         </div>
                       </div>

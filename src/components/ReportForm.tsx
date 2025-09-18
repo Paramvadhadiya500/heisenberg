@@ -6,15 +6,15 @@ import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Send, AlertTriangle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import axios from 'axios';
+import { supabase } from '@/integrations/supabase/client';
 
 interface ReportFormProps {
-  complaintId: number;
+  complaintId: string;
   onSuccess: () => void;
 }
 
 const ReportForm: React.FC<ReportFormProps> = ({ complaintId, onSuccess }) => {
-  const { user } = useAuth();
+  const { user, supabaseUser } = useAuth();
   const { toast } = useToast();
   
   const [description, setDescription] = useState('');
@@ -22,26 +22,28 @@ const ReportForm: React.FC<ReportFormProps> = ({ complaintId, onSuccess }) => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user || !description.trim()) return;
+    if (!user || !supabaseUser || !description.trim()) return;
 
     setIsSubmitting(true);
     
     try {
-      const response = await axios.post('http://localhost:3001/api/reports', {
-        userId: user.id,
-        complaintId,
-        description: description.trim()
-      });
-
-      if (response.data.success) {
-        toast({
-          title: "Report submitted successfully!",
-          description: "Admin has been notified about the worker issue.",
+      const { error } = await supabase
+        .from('reports')
+        .insert({
+          user_id: supabaseUser.id,
+          complaint_id: complaintId,
+          description: description.trim()
         });
-        
-        setDescription('');
-        onSuccess();
-      }
+
+      if (error) throw error;
+
+      toast({
+        title: "Report submitted successfully!",
+        description: "Admin has been notified about the worker issue.",
+      });
+      
+      setDescription('');
+      onSuccess();
     } catch (error) {
       toast({
         title: "Error submitting report",

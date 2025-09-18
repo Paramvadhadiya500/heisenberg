@@ -8,14 +8,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Camera, MapPin, Send, ImageIcon } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import axios from 'axios';
+import { supabase } from '@/integrations/supabase/client';
 
 interface ComplaintFormProps {
   onSuccess: () => void;
 }
 
 const ComplaintForm: React.FC<ComplaintFormProps> = ({ onSuccess }) => {
-  const { user } = useAuth();
+  const { user, supabaseUser } = useAuth();
   const { toast } = useToast();
   
   const [formData, setFormData] = useState({
@@ -48,32 +48,37 @@ const ComplaintForm: React.FC<ComplaintFormProps> = ({ onSuccess }) => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user) return;
+    if (!user || !supabaseUser) return;
 
     setIsSubmitting(true);
     
     try {
-      const response = await axios.post('http://localhost:3001/api/complaints', {
-        userId: user.id,
-        ...formData
-      });
+      const { error } = await supabase
+        .from('complaints')
+        .insert({
+          user_id: supabaseUser.id,
+          name: formData.name,
+          location: formData.location,
+          description: formData.description,
+          image_url: formData.photo || null
+        });
 
-      if (response.data.success) {
-        toast({
-          title: "Complaint submitted successfully!",
-          description: "Your waste management issue has been reported. We'll assign a worker soon.",
-        });
-        
-        // Reset form
-        setFormData({
-          name: user.name,
-          location: '',
-          description: '',
-          photo: ''
-        });
-        setPhotoPreview(null);
-        onSuccess();
-      }
+      if (error) throw error;
+
+      toast({
+        title: "Complaint submitted successfully!",
+        description: "Your waste management issue has been reported. We'll assign a worker soon.",
+      });
+      
+      // Reset form
+      setFormData({
+        name: user.name,
+        location: '',
+        description: '',
+        photo: ''
+      });
+      setPhotoPreview(null);
+      onSuccess();
     } catch (error) {
       toast({
         title: "Error submitting complaint",

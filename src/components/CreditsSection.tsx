@@ -14,10 +14,10 @@ import {
   Sparkles
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import axios from 'axios';
+import { supabase } from '@/integrations/supabase/client';
 
 const CreditsSection = () => {
-  const { user, updateCredits } = useAuth();
+  const { user, supabaseUser, updateCredits } = useAuth();
   const { toast } = useToast();
   const [isRedeeming, setIsRedeeming] = useState(false);
   const [redeemCode, setRedeemCode] = useState<string | null>(null);
@@ -27,25 +27,31 @@ const CreditsSection = () => {
   const progressPercentage = Math.min(100, (currentCredits / 100) * 100);
 
   const handleRedeem = async () => {
-    if (!user || currentCredits < 100) return;
+    if (!user || !supabaseUser || currentCredits < 100) return;
 
     setIsRedeeming(true);
     
     try {
-      const response = await axios.post('http://localhost:3001/api/credits/redeem', {
-        userId: user.id
-      });
-
-      if (response.data.success) {
-        const code = response.data.redeemCode.code;
-        setRedeemCode(code);
-        updateCredits(currentCredits - 100);
-        
-        toast({
-          title: "Reward redeemed successfully!",
-          description: `Your redeem code: ${code}`,
+      // Generate redeem code
+      const code = `ECO-${Math.random().toString(36).substr(2, 8).toUpperCase()}`;
+      
+      const { error } = await supabase
+        .from('redeem_codes')
+        .insert({
+          code,
+          user_id: supabaseUser.id
         });
-      }
+
+      if (error) throw error;
+
+      // Update user credits
+      await updateCredits(currentCredits - 100);
+      setRedeemCode(code);
+      
+      toast({
+        title: "Reward redeemed successfully!",
+        description: `Your redeem code: ${code}`,
+      });
     } catch (error) {
       toast({
         title: "Error redeeming reward",

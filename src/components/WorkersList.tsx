@@ -11,10 +11,10 @@ import {
   Trash2
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import axios from 'axios';
+import { supabase } from '@/integrations/supabase/client';
 
 interface Worker {
-  id: number;
+  id: string;
   name: string;
   phone: string;
   price_steel: number;
@@ -27,7 +27,7 @@ const WorkersList = () => {
   const { toast } = useToast();
   const [workers, setWorkers] = useState<Worker[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedWorker, setSelectedWorker] = useState<number | null>(null);
+  const [selectedWorker, setSelectedWorker] = useState<string | null>(null);
 
   useEffect(() => {
     fetchWorkers();
@@ -35,8 +35,13 @@ const WorkersList = () => {
 
   const fetchWorkers = async () => {
     try {
-      const response = await axios.get('http://localhost:3001/api/workers');
-      setWorkers(response.data);
+      const { data, error } = await supabase
+        .from('workers')
+        .select('*')
+        .order('name');
+      
+      if (error) throw error;
+      setWorkers(data || []);
     } catch (error) {
       toast({
         title: "Error loading workers",
@@ -48,7 +53,7 @@ const WorkersList = () => {
     }
   };
 
-  const handleSelectWorker = (workerId: number) => {
+  const handleSelectWorker = (workerId: string) => {
     setSelectedWorker(workerId);
     const worker = workers.find(w => w.id === workerId);
     if (worker) {
