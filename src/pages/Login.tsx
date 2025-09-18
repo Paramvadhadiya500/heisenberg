@@ -34,7 +34,7 @@ const Login = () => {
       });
       navigate('/');
     } else {
-      setError('Invalid email or password');
+      setError('Login failed. Check your password or verify your email. For demo accounts, Sign Up with the same email and password "demo123" first.');
     }
     
     setIsLoading(false);

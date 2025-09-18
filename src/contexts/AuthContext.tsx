@@ -38,70 +38,82 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const { toast } = useToast();
 
   useEffect(() => {
-    // Set up auth state listener
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        setSupabaseUser(session?.user ?? null);
+    // Helper to load or create profile outside of onAuthStateChange to avoid deadlocks
+    const loadOrCreateProfile = async (sbUser: SupabaseUser) => {
+      try {
+        const { data: profile, error } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('user_id', sbUser.id)
+          .maybeSingle();
         
-        if (session?.user) {
-          // Get or create user profile
-          const { data: profile, error } = await supabase
+        if (error && error.code !== 'PGRST116') {
+          console.error('Error fetching profile:', error);
+          setIsLoading(false);
+          return;
+        }
+        
+        if (!profile && sbUser.email) {
+          const { data: newProfile, error: insertError } = await supabase
             .from('profiles')
-            .select('*')
-            .eq('user_id', session.user.id)
-            .maybeSingle();
+            .insert({
+              user_id: sbUser.id,
+              name: sbUser.user_metadata?.name || sbUser.email.split('@')[0],
+              email: sbUser.email,
+              role: sbUser.email === 'admin@example.com' ? 'admin' : 'user',
+              credits: 100
+            })
+            .select()
+            .single();
           
-          if (error && error.code !== 'PGRST116') {
-            console.error('Error fetching profile:', error);
+          if (insertError) {
+            console.error('Error creating profile:', insertError);
+            setIsLoading(false);
             return;
           }
           
-          if (!profile && session.user.email) {
-            // Create profile for new user
-            const { data: newProfile, error: insertError } = await supabase
-              .from('profiles')
-              .insert({
-                user_id: session.user.id,
-                name: session.user.user_metadata?.name || session.user.email.split('@')[0],
-                email: session.user.email,
-                role: session.user.email === 'admin@example.com' ? 'admin' : 'user',
-                credits: 100
-              })
-              .select()
-              .single();
-            
-            if (insertError) {
-              console.error('Error creating profile:', insertError);
-              return;
-            }
-            
-            setUser({
-              id: session.user.id,
-              name: newProfile.name,
-              email: newProfile.email,
-              role: newProfile.role as 'user' | 'admin',
-              credits: newProfile.credits
-            });
-          } else if (profile) {
-            setUser({
-              id: session.user.id,
-              name: profile.name,
-              email: profile.email,
-              role: profile.role as 'user' | 'admin',
-              credits: profile.credits
-            });
-          }
-        } else {
-          setUser(null);
+          setUser({
+            id: sbUser.id,
+            name: newProfile.name,
+            email: newProfile.email,
+            role: newProfile.role as 'user' | 'admin',
+            credits: newProfile.credits
+          });
+        } else if (profile) {
+          setUser({
+            id: sbUser.id,
+            name: profile.name,
+            email: profile.email,
+            role: profile.role as 'user' | 'admin',
+            credits: profile.credits
+          });
         }
-        
+      } finally {
         setIsLoading(false);
       }
-    );
+    };
 
-    // Get initial session
+    // Set up auth state listener (sync only)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      setSupabaseUser(session?.user ?? null);
+      
+      if (session?.user) {
+        // Defer supabase calls to avoid deadlocks
+        setTimeout(() => loadOrCreateProfile(session.user as SupabaseUser), 0);
+      } else {
+        setUser(null);
+        setIsLoading(false);
+      }
+    });
+
+    // Initialize from existing session
     supabase.auth.getSession().then(({ data: { session } }) => {
-      // This will trigger the onAuthStateChange callback
+      setSupabaseUser(session?.user ?? null);
+      if (session?.user) {
+        loadOrCreateProfile(session.user as SupabaseUser);
+      } else {
+        setIsLoading(false);
+      }
     });
 
     return () => subscription.unsubscribe();
