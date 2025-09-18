@@ -19,7 +19,6 @@ interface AwarenessVideoProps {
 
 const AwarenessVideo: React.FC<AwarenessVideoProps> = ({ onComplete, onSkip }) => {
   const [currentSlide, setCurrentSlide] = useState(0);
-  const [isWatching, setIsWatching] = useState(false);
 
   const slides = [
     {
@@ -56,14 +55,6 @@ const AwarenessVideo: React.FC<AwarenessVideoProps> = ({ onComplete, onSkip }) =
     } else {
       onComplete();
     }
-  };
-
-  const startWatching = () => {
-    setIsWatching(true);
-    // Simulate video watching
-    setTimeout(() => {
-      nextSlide();
-    }, 2000);
   };
 
   const currentSlideData = slides[currentSlide];
@@ -113,22 +104,74 @@ const AwarenessVideo: React.FC<AwarenessVideoProps> = ({ onComplete, onSkip }) =
           </CardHeader>
 
           <CardContent className="space-y-6">
-            {/* Video Placeholder */}
-            <div className="aspect-video bg-eco-light rounded-lg flex items-center justify-center border-2 border-dashed border-eco-green">
-              {!isWatching ? (
-                <Button
-                  onClick={startWatching}
-                  size="lg"
-                  className="eco-gradient"
+            {/* Educational Videos */}
+            <div className="aspect-video bg-eco-light rounded-lg overflow-hidden">
+              {currentSlide === 0 && (
+                <video 
+                  className="w-full h-full object-cover"
+                  controls
+                  poster="https://images.unsplash.com/photo-1569163139394-de4e4f43e4e3?w=800&h=450&fit=crop"
                 >
-                  <Play className="h-6 w-6 mr-2" />
-                  Watch Training Video ({currentSlide + 1}/{slides.length})
-                </Button>
-              ) : (
-                <div className="text-center">
-                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-eco-green mx-auto mb-4"></div>
-                  <p className="text-eco-dark">Loading video content...</p>
-                </div>
+                  <source src="https://sample-videos.com/zip/10/mp4/SampleVideo_1280x720_1mb.mp4" type="video/mp4" />
+                  <div className="flex items-center justify-center h-full">
+                    <div className="text-center p-8">
+                      <Globe className="h-16 w-16 text-eco-green mx-auto mb-4" />
+                      <h3 className="text-xl font-semibold text-eco-dark mb-2">Welcome to EcoWaste</h3>
+                      <p className="text-eco-dark/70">Join the environmental movement</p>
+                    </div>
+                  </div>
+                </video>
+              )}
+              
+              {currentSlide === 1 && (
+                <video 
+                  className="w-full h-full object-cover"
+                  controls
+                  poster="https://images.unsplash.com/photo-1532996122724-e3c354a0b15b?w=800&h=450&fit=crop"
+                >
+                  <source src="https://sample-videos.com/zip/10/mp4/SampleVideo_1280x720_2mb.mp4" type="video/mp4" />
+                  <div className="flex items-center justify-center h-full">
+                    <div className="text-center p-8">
+                      <Recycle className="h-16 w-16 text-eco-accent mx-auto mb-4" />
+                      <h3 className="text-xl font-semibold text-eco-dark mb-2">Report Waste Issues</h3>
+                      <p className="text-eco-dark/70">Make your community cleaner</p>
+                    </div>
+                  </div>
+                </video>
+              )}
+              
+              {currentSlide === 2 && (
+                <video 
+                  className="w-full h-full object-cover"
+                  controls
+                  poster="https://images.unsplash.com/photo-1559827260-dc66d52bef19?w=800&h=450&fit=crop"
+                >
+                  <source src="https://sample-videos.com/zip/10/mp4/SampleVideo_1280x720_5mb.mp4" type="video/mp4" />
+                  <div className="flex items-center justify-center h-full">
+                    <div className="text-center p-8">
+                      <Users className="h-16 w-16 text-eco-warning mx-auto mb-4" />
+                      <h3 className="text-xl font-semibold text-eco-dark mb-2">Connect with Workers</h3>
+                      <p className="text-eco-dark/70">Find local waste collectors</p>
+                    </div>
+                  </div>
+                </video>
+              )}
+              
+              {currentSlide === 3 && (
+                <video 
+                  className="w-full h-full object-cover"
+                  controls
+                  poster="https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?w=800&h=450&fit=crop"
+                >
+                  <source src="https://sample-videos.com/zip/10/mp4/SampleVideo_1280x720_1mb.mp4" type="video/mp4" />
+                  <div className="flex items-center justify-center h-full">
+                    <div className="text-center p-8">
+                      <Leaf className="h-16 w-16 text-eco-success mx-auto mb-4" />
+                      <h3 className="text-xl font-semibold text-eco-dark mb-2">Earn Green Credits</h3>
+                      <p className="text-eco-dark/70">Get rewarded for eco-actions</p>
+                    </div>
+                  </div>
+                </video>
               )}
             </div>
 
@@ -201,7 +244,6 @@ const AwarenessVideo: React.FC<AwarenessVideoProps> = ({ onComplete, onSkip }) =
               <Button
                 onClick={nextSlide}
                 className="flex-1 eco-gradient"
-                disabled={isWatching}
               >
                 {currentSlide === slides.length - 1 ? (
                   <>
