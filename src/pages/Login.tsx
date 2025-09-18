@@ -34,7 +34,7 @@ const Login = () => {
       });
       navigate('/');
     } else {
-      setError('Login failed. Check your password or verify your email. For demo accounts, Sign Up with the same email and password "demo123" first.');
+      setError('Login failed. For demo accounts: First Sign Up with the same email and password "demo123", then verify your email (or disable email confirmation in Supabase settings).');
     }
     
     setIsLoading(false);
@@ -55,11 +55,15 @@ const Login = () => {
     setIsLoading(false);
   };
 
-  const demoAccounts = [
-    { email: 'john@example.com', role: 'User', name: 'John Doe' },
-    { email: 'jane@example.com', role: 'User', name: 'Jane Smith' },
-    { email: 'admin@example.com', role: 'Admin', name: 'Admin User' },
-  ];
+  const demoAccounts = {
+    users: [
+      { email: 'john@example.com', role: 'User', name: 'John Doe' },
+      { email: 'jane@example.com', role: 'User', name: 'Jane Smith' },
+    ],
+    admin: [
+      { email: 'admin@example.com', role: 'Admin', name: 'Admin User' },
+    ]
+  };
 
   return (
     <div className="min-h-screen flex items-center justify-center eco-gradient-subtle p-4">
@@ -73,7 +77,10 @@ const Login = () => {
             <h1 className="text-3xl font-bold text-eco-dark">EcoWaste</h1>
           </div>
           <p className="text-muted-foreground">
-            Join the green revolution - Manage waste, earn rewards
+            Join the green revolution - Access for Users & Administrators
+          </p>
+          <p className="text-xs text-muted-foreground mt-1">
+            Users manage waste & earn credits • Admins oversee the system
           </p>
         </div>
 
@@ -89,7 +96,9 @@ const Login = () => {
               <TabsContent value="login" className="space-y-4">
                 <div className="text-center">
                   <h2 className="text-xl font-semibold">Welcome Back</h2>
-                  <p className="text-sm text-muted-foreground">Enter your credentials to access your account</p>
+                  <p className="text-sm text-muted-foreground">
+                    Enter credentials for User or Admin access
+                  </p>
                 </div>
                 
                 <form onSubmit={handleLogin} className="space-y-4">
@@ -191,38 +200,73 @@ const Login = () => {
         </Card>
 
         {/* Demo Accounts */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-sm">Demo Accounts (For Testing)</CardTitle>
-            <CardDescription className="text-xs">
-              Click to auto-fill login credentials
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            {demoAccounts.map((account) => (
-              <Button
-                key={account.email}
-                variant="outline"
-                size="sm"
-                className="w-full justify-start"
-                onClick={() => {
-                  setLoginData({ email: account.email, password: 'demo123' });
-                }}
-              >
-                <div className="flex items-center gap-2">
-                  {account.role === 'Admin' ? (
-                    <Globe className="h-4 w-4 text-eco-warning" />
-                  ) : (
+        <div className="space-y-4">
+          {/* User Demo Accounts */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm flex items-center gap-2">
+                <Leaf className="h-4 w-4 text-eco-green" />
+                User Demo Accounts
+              </CardTitle>
+              <CardDescription className="text-xs">
+                For regular users - Click to auto-fill credentials
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {demoAccounts.users.map((account) => (
+                <Button
+                  key={account.email}
+                  variant="outline"
+                  size="sm"
+                  className="w-full justify-start"
+                  onClick={() => {
+                    setLoginData({ email: account.email, password: 'demo123' });
+                  }}
+                >
+                  <div className="flex items-center gap-2">
                     <Leaf className="h-4 w-4 text-eco-green" />
-                  )}
-                  <span className="text-xs">
-                    {account.name} ({account.role})
-                  </span>
-                </div>
-              </Button>
-            ))}
-          </CardContent>
-        </Card>
+                    <span className="text-xs">
+                      {account.name} ({account.role})
+                    </span>
+                  </div>
+                </Button>
+              ))}
+            </CardContent>
+          </Card>
+
+          {/* Admin Demo Accounts */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm flex items-center gap-2">
+                <Globe className="h-4 w-4 text-eco-warning" />
+                Admin Demo Account
+              </CardTitle>
+              <CardDescription className="text-xs">
+                For administrators - Full system access
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {demoAccounts.admin.map((account) => (
+                <Button
+                  key={account.email}
+                  variant="outline"
+                  size="sm"
+                  className="w-full justify-start"
+                  onClick={() => {
+                    setLoginData({ email: account.email, password: 'demo123' });
+                  }}
+                >
+                  <div className="flex items-center gap-2">
+                    <Globe className="h-4 w-4 text-eco-warning" />
+                    <span className="text-xs">
+                      {account.name} ({account.role})
+                    </span>
+                  </div>
+                </Button>
+              ))}
+            </CardContent>
+          </Card>
+        </div>
 
         {/* Features */}
         <div className="grid grid-cols-3 gap-4 text-center">
