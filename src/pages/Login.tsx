@@ -7,12 +7,14 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Leaf, Recycle, Globe } from 'lucide-react';
+import { Leaf, Recycle, Globe, Shield } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 
 const Login = () => {
   const [loginData, setLoginData] = useState({ email: '', password: '' });
   const [signupData, setSignupData] = useState({ name: '', email: '', password: '' });
+  const [selectedRole, setSelectedRole] = useState<'user' | 'admin'>('user');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   
@@ -25,7 +27,7 @@ const Login = () => {
     setIsLoading(true);
     setError('');
 
-    const success = await login(loginData.email, loginData.password);
+    const success = await login(loginData.email, loginData.password, selectedRole);
     
     if (success) {
       toast({
@@ -126,6 +128,37 @@ const Login = () => {
                     />
                   </div>
 
+                  {/* Role Selection for Admin Access */}
+                  <div className="space-y-3">
+                    <Label className="text-sm font-medium">Access Level</Label>
+                    <RadioGroup 
+                      value={selectedRole} 
+                      onValueChange={(value) => setSelectedRole(value as 'user' | 'admin')}
+                      className="flex space-x-6"
+                    >
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="user" id="user" />
+                        <Label htmlFor="user" className="flex items-center gap-2 cursor-pointer">
+                          <Leaf className="h-4 w-4 text-eco-green" />
+                          <span className="text-sm">User Access</span>
+                        </Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="admin" id="admin" />
+                        <Label htmlFor="admin" className="flex items-center gap-2 cursor-pointer">
+                          <Shield className="h-4 w-4 text-eco-warning" />
+                          <span className="text-sm">Admin Access</span>
+                        </Label>
+                      </div>
+                    </RadioGroup>
+                    <p className="text-xs text-muted-foreground">
+                      {selectedRole === 'admin' 
+                        ? "Full system administration access" 
+                        : "Standard user features and waste management"
+                      }
+                    </p>
+                  </div>
+
                   {error && (
                     <Alert variant="destructive">
                       <AlertDescription>{error}</AlertDescription>
@@ -221,6 +254,7 @@ const Login = () => {
                   className="w-full justify-start"
                   onClick={() => {
                     setLoginData({ email: account.email, password: 'demo123' });
+                    setSelectedRole(account.role.toLowerCase() as 'user' | 'admin');
                   }}
                 >
                   <div className="flex items-center gap-2">

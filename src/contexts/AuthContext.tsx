@@ -14,7 +14,7 @@ interface User {
 interface AuthContextType {
   user: User | null;
   supabaseUser: SupabaseUser | null;
-  login: (email: string, password: string) => Promise<boolean>;
+  login: (email: string, password: string, selectedRole?: 'user' | 'admin') => Promise<boolean>;
   signup: (email: string, password: string, name: string) => Promise<boolean>;
   logout: () => void;
   updateCredits: (credits: number) => void;
@@ -37,9 +37,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
 
+  // Store selected role temporarily for profile updates
+  const [tempSelectedRole, setTempSelectedRole] = useState<'user' | 'admin' | null>(null);
+
   useEffect(() => {
     // Helper to load or create profile outside of onAuthStateChange to avoid deadlocks
-    const loadOrCreateProfile = async (sbUser: SupabaseUser) => {
+    const loadOrCreateProfile = async (sbUser: SupabaseUser, selectedRole?: 'user' | 'admin') => {
       try {
         const { data: profile, error } = await supabase
           .from('profiles')
@@ -54,13 +57,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
         
         if (!profile && sbUser.email) {
+          // Use selectedRole if provided, otherwise default logic
+          const roleToUse = selectedRole || (sbUser.email === 'admin@example.com' ? 'admin' : 'user');
+          
           const { data: newProfile, error: insertError } = await supabase
             .from('profiles')
             .insert({
               user_id: sbUser.id,
               name: sbUser.user_metadata?.name || sbUser.email.split('@')[0],
               email: sbUser.email,
-              role: sbUser.email === 'admin@example.com' ? 'admin' : 'user',
+              role: roleToUse,
               credits: 100
             })
             .select()
@@ -80,6 +86,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             credits: newProfile.credits
           });
         } else if (profile) {
+          // Update role if selectedRole is provided and user has admin email
+          if (selectedRole && sbUser.email === 'admin@example.com') {
+            const { data: updatedProfile, error: updateError } = await supabase
+              .from('profiles')
+              .update({ role: selectedRole })
+              .eq('user_id', sbUser.id)
+              .select()
+              .single();
+              
+            if (updateError) {
+              console.error('Error updating profile role:', updateError);
+            } else {
+              setUser({
+                id: sbUser.id,
+                name: updatedProfile.name,
+                email: updatedProfile.email,
+                role: updatedProfile.role as 'user' | 'admin',
+                credits: updatedProfile.credits
+              });
+              setIsLoading(false);
+              return;
+            }
+          }
+          
           setUser({
             id: sbUser.id,
             name: profile.name,
@@ -90,6 +120,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       } finally {
         setIsLoading(false);
+        setTempSelectedRole(null);
       }
     };
 
@@ -98,8 +129,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setSupabaseUser(session?.user ?? null);
       
       if (session?.user) {
-        // Defer supabase calls to avoid deadlocks
-        setTimeout(() => loadOrCreateProfile(session.user as SupabaseUser), 0);
+        // Defer supabase calls to avoid deadlocks, use tempSelectedRole if available
+        setTimeout(() => loadOrCreateProfile(session.user as SupabaseUser, tempSelectedRole || undefined), 0);
       } else {
         setUser(null);
         setIsLoading(false);
@@ -119,8 +150,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => subscription.unsubscribe();
   }, []);
 
-  const login = async (email: string, password: string): Promise<boolean> => {
+  const login = async (email: string, password: string, selectedRole?: 'user' | 'admin'): Promise<boolean> => {
     try {
+      // Store the selected role temporarily
+      if (selectedRole) {
+        setTempSelectedRole(selectedRole);
+      }
+      
       const { error } = await supabase.auth.signInWithPassword({
         email,
         password
