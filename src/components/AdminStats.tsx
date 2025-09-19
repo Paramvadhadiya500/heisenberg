@@ -14,7 +14,7 @@ import {
   Calendar
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import axios from 'axios';
+import { supabase } from '@/integrations/supabase/client';
 
 interface Stats {
   totalUsers: number;
@@ -47,25 +47,25 @@ const AdminStats = () => {
 
   const fetchStats = async () => {
     try {
-      const [usersRes, complaintsRes, reportsRes] = await Promise.all([
-        axios.get('http://localhost:3001/api/users'),
-        axios.get('http://localhost:3001/api/complaints?role=admin'),
-        axios.get('http://localhost:3001/api/reports')
+      const [{ data: users, error: usersError }, { data: complaints, error: complaintsError }, { data: reports, error: reportsError }] = await Promise.all([
+        supabase.from('profiles').select('*'),
+        supabase.from('complaints').select('*'),
+        supabase.from('reports').select('*')
       ]);
       
-      const users = usersRes.data;
-      const complaints = complaintsRes.data;
-      const reports = reportsRes.data;
+      if (usersError) throw usersError;
+      if (complaintsError) throw complaintsError;
+      if (reportsError) throw reportsError;
       
       setStats({
-        totalUsers: users.length,
-        totalComplaints: complaints.length,
-        totalReports: reports.length,
-        totalCredits: users.reduce((sum: number, user: any) => sum + user.credits, 0),
-        pendingComplaints: complaints.filter((c: any) => c.status === 'pending').length,
-        resolvedComplaints: complaints.filter((c: any) => c.status === 'completed').length,
-        pendingReports: reports.filter((r: any) => r.status === 'pending').length,
-        activeUsers: users.filter((u: any) => u.credits > 0).length
+        totalUsers: users?.length || 0,
+        totalComplaints: complaints?.length || 0,
+        totalReports: reports?.length || 0,
+        totalCredits: users?.reduce((sum: number, user: any) => sum + user.credits, 0) || 0,
+        pendingComplaints: complaints?.filter((c: any) => c.status === 'pending').length || 0,
+        resolvedComplaints: complaints?.filter((c: any) => c.status === 'completed').length || 0,
+        pendingReports: reports?.filter((r: any) => r.status === 'pending').length || 0,
+        activeUsers: users?.filter((u: any) => u.credits > 0).length || 0
       });
     } catch (error) {
       toast({
