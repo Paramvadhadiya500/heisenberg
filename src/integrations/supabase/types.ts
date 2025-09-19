@@ -197,7 +197,24 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      user_leaderboard: {
+        Row: {
+          credits: number | null
+          id: string | null
+          name: string | null
+        }
+        Insert: {
+          credits?: number | null
+          id?: string | null
+          name?: string | null
+        }
+        Update: {
+          credits?: number | null
+          id?: string | null
+          name?: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       [_ in never]: never
